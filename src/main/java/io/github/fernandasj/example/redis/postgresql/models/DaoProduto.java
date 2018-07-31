@@ -28,12 +28,23 @@ public class DaoProduto {
             statement.setFloat(3, p.getPreco());
             statement.execute();
             statement.close();
+            saveRedis(p);
             return true;
 
         } catch (SQLException ex) {
             ex.printStackTrace();
         }
         return false;
+    }
+    
+    public boolean saveRedis(Produto p){
+        Jedis jedis = new Jedis("localhost", 6379);
+        Gson gson = new Gson();
+        String json = gson.toJson(p);
+        jedis.setex("" + p.getCodigo(), 1800, json);
+        System.out.println(jedis.get("" + p.getCodigo()));
+        jedis.close();
+        return true;
     }
     
     public Produto search (int codigo){
@@ -78,11 +89,10 @@ public class DaoProduto {
             produto = daoProduto.search(codigo);
             if(produto == null){
                 JOptionPane.showMessageDialog(null, "Produto não encontrado");
+                return null;
             } else {
                 JOptionPane.showMessageDialog(null, "Produto no Postgres");
-                jedis.setex(codigo+" ", 20, gson.toJson(produto));
-                jedis.get(""+codigo);
-                System.out.println(produto);
+                saveRedis(produto);
             }
         jedis.close();
         }
